@@ -10,6 +10,7 @@
 #include <string>
 #include <iostream>
 #include <stdlib.h> 
+#include <fstream>
 
 
 // 'BigIntegerLibrary.hh' includes all of the library headers.
@@ -26,18 +27,20 @@ BigUnsigned getPrime(int minBits) { // radnomly generate a large prime number wi
 
    return p;
 }
-bool isPrime(BigUnsigned p) { // use Fermat test to check if a number is prime
-   //
+bool isPrime(BigUnsigned p, int k) { // use Fermat test to check if a number is prime
+   // check k random numbers between 2 and p and return true if all 
+   // of them pass the condition of i^(p - 1) % p == 1
+   // higher k is more accurate but slower
    return true;
 }
 
-BigUnsigned getE(BigUnsigned chi) { // generate encryption key
+BigUnsigned getE(BigUnsigned chi) { // get public key component
    // given e as any odd integer with no common factors with chi (other than 1)
    BigUnsigned e(1);
    return e;
 }
 
-BigUnsigned getD(BigUnsigned e, BigUnsigned chi) { // get decryption key
+BigUnsigned getD(BigUnsigned e, BigUnsigned chi) { // get private key component
    // given d as the integer where de % chi = 1
    BigUnsigned d(1);
    return d;
@@ -69,17 +72,31 @@ int main(){
       std::cout << "my big3/big2 !!!\n";
       std::cout <<big3/big2;*/
 
+      std::ofstream fileStream;
+
       // get inital parameters
       BigUnsigned p = getPrime(512); 
       BigUnsigned q = getPrime(512);
       
       // save primes to file
+      fileStream.open("p_q.txt", std::fstream::out);
+      fileStream << p << " " << q;
+      fileStream.close();
 
       // get key parameters
-      BigUnsigned n = p * q;
       BigUnsigned chi = (p - 1) * (q - 1);
+      BigUnsigned e = getE(chi);
+      BigUnsigned d = getD(e, chi);      
+      BigUnsigned n = p * q;
 
-      // save keys to file
+      // save keys to files
+      fileStream.open("e_n.txt");
+      fileStream << e << " " << n;
+      fileStream.close();
+
+      fileStream.open("d_n.txt");
+      fileStream << d << " " << n;
+      fileStream.close();
       
 	} catch(char const* err) {
 		std::cout << "The library threw an exception:\n"
