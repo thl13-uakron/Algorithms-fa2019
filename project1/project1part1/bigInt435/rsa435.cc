@@ -16,31 +16,64 @@
 // 'BigIntegerLibrary.hh' includes all of the library headers.
 #include "BigIntegerLibrary.hh"
 
-BigUnsigned getPrime(int minBits) { // radnomly generate a large prime number with at least a certain number of bits
+// recursive function to find a^(p-q) % p faster for fermat test
+// given rule (x^2) % n == (x % n)^2 % n
+BigUnsigned expMod(int base, BigUnsigned power, BigUnsigned mod) {
+   // stopping case
+   if (power < 2) return BigUnsigned(base) % mod;
+
+   // recursive case
+   BigUnsigned result = expMod(base, power / 2, mod);
+   result *= result;
+   if (power % 2 != 0) result *= (BigUnsigned(base) % mod);
+
+   return result % mod;
+} 
+// use Fermat test to check if a number is prime
+bool isPrime(BigUnsigned p, int k) {
+   // check condition a^(p-1) % p == 1 for k values of a starting from 2 and less than p
+   // higher values of k provide more certainty but are slower
+   for (int a = 2; a < k + 2; ++a) {
+      if (expMod(a, p - 1, p) != 1) return false;
+   }
+   return true;
+}
+// radnomly generate a large prime number with at least a certain number of bits
+BigUnsigned getPrime(int minBits) { 
    // get to minimum value
    BigUnsigned p(1);
    p <<= minBits;
 
    // make random modification to value
+   p *= rand();
 
    // adjust until primality test passed
+   do {
+      p += rand();
+      p *= 2;
+      p += 1;
+   } while (!isPrime(p, 1)); 
 
    return p;
 }
-bool isPrime(BigUnsigned p, int k) { // use Fermat test to check if a number is prime
-   // check k random numbers between 2 and p and return true if all 
-   // of them pass the condition of i^(p - 1) % p == 1
-   // higher k is more accurate but slower
-   return true;
-}
 
-BigUnsigned getE(BigUnsigned chi) { // get public key component
+// helper function to determine gcd between e and chi
+BigUnsigned GCD(BigUnsigned x, BigUnsigned y) {
+   if (x > y) {
+      if (y == 0) return x;
+      return GCD(x % y, y);
+   }
+   if (x == 0) return y;
+   return GCD(x, y % x);
+}
+// get public key component
+BigUnsigned getE(BigUnsigned chi) { 
    // given e as any odd integer with no common factors with chi (other than 1)
    BigUnsigned e(1);
    return e;
 }
-
-BigUnsigned getD(BigUnsigned e, BigUnsigned chi) { // get private key component
+// get private key component
+BigUnsigned getD(BigUnsigned e, BigUnsigned chi) { 
    // given d as the integer where de % chi = 1
    BigUnsigned d(1);
    return d;
@@ -72,15 +105,23 @@ int main(){
       std::cout << "my big3/big2 !!!\n";
       std::cout <<big3/big2;*/
 
-      std::ofstream fileStream;
+      srand(time(0));
+
+      std::fstream fileStream;
 
       // get inital parameters
-      BigUnsigned p = getPrime(512); 
+      BigUnsigned p = getPrime(512);       
+      std::cout << "p: " << p << std::endl;
       BigUnsigned q = getPrime(512);
+      std::cout << "q: " << q << std::endl;
+      std::cout << GCD(p, q) << std::endl;
       
       // save primes to file
-      fileStream.open("p_q.txt", std::fstream::out);
-      fileStream << p << " " << q;
+      fileStream.open("p_q.txt", std::ios::out);
+      fileStream << p << std::endl;
+      fileStream << q << std::flush;
+      if (fileStream) std::cout << "p and q saved to file" << std::endl;
+      else std::cout << "file output failed for p and q" << std::endl;
       fileStream.close();
 
       // get key parameters
@@ -90,12 +131,14 @@ int main(){
       BigUnsigned n = p * q;
 
       // save keys to files
-      fileStream.open("e_n.txt");
-      fileStream << e << " " << n;
+      fileStream.open("e_n.txt", std::ios::out);
+      fileStream << e << std::endl;
+      fileStream << n;
       fileStream.close();
 
-      fileStream.open("d_n.txt");
-      fileStream << d << " " << n;
+      fileStream.open("d_n.txt", std::ios::out);
+      fileStream << d << std::endl;
+      fileStream << n;
       fileStream.close();
       
 	} catch(char const* err) {
