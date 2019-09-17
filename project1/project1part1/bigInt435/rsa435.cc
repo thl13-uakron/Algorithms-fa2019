@@ -17,7 +17,8 @@
 #include "BigIntegerLibrary.hh"
 
 // recursive function to find a^(p-q) % p faster for fermat test
-// given rule (x^2) % n == (x % n)^2 % n
+// given rule (a * b) % n = (a % n) * (b % n) % n
+// and thus that (x^2) % n == (x % n)^2 % n
 BigUnsigned expMod(int base, BigUnsigned power, BigUnsigned mod) {
    // stopping case
    if (power < 2) return BigUnsigned(base) % mod;
@@ -69,14 +70,54 @@ BigUnsigned GCD(BigUnsigned x, BigUnsigned y) {
 // get public key component
 BigUnsigned getE(BigUnsigned chi) { 
    // given e as any odd integer with no common factors with chi (other than 1)
-   BigUnsigned e(1);
+   BigUnsigned e(rand());
+
+   do {
+      e += rand();
+      if (e % 2 == 0) e += 1;
+   } while (GCD(e, chi) > 1);
+
    return e;
 }
-// get private key component
+// use Extended Euclidean algorithm to get private key component
 BigUnsigned getD(BigUnsigned e, BigUnsigned chi) { 
-   // given d as the integer where de % chi = 1
-   BigUnsigned d(1);
-   return d;
+   // given d as the integer where de % chi == 1 
+   // or (d * e) + (r * chi) == 1
+   BigInteger d(0), newD(1);
+   BigInteger r(chi), newR(e);
+   BigInteger quotient(0), temp(0);
+
+   while (newR != 0) {
+      quotient = r / newR;
+
+      temp = d;
+      d = newD;
+      newD = temp - quotient * newD;
+
+      temp = r;
+      r = newR;
+      newR = temp - quotient * newR;
+   }
+
+   if (d < 0) d += chi;
+   return d.getMagnitude();
+}
+
+template <typename B1, typename B2>
+void saveToFile(std::string fileName, B1 x, B2 y) {
+   try {
+      std::ofstream fileStream(fileName.c_str(), std::ios::out);
+      if (!fileStream) {
+         throw(std::runtime_error("failed to open file"));
+      }
+
+      fileStream << x << std::endl;
+      fileStream << y << std::flush;
+      fileStream.close();
+   }
+   catch(std::runtime_error err) {
+      std::cerr << "[exception] " << err.what() << std::endl;
+   }
 }
 
 int main(){
@@ -107,39 +148,39 @@ int main(){
 
       srand(time(0));
 
-      std::fstream fileStream;
-
       // get inital parameters
+      std::cout << "\ncalculating p..." << std::endl;
       BigUnsigned p = getPrime(512);       
       std::cout << "p: " << p << std::endl;
+
+      std::cout << "\ncalculating q..." << std::endl;
       BigUnsigned q = getPrime(512);
       std::cout << "q: " << q << std::endl;
-      std::cout << GCD(p, q) << std::endl;
       
       // save primes to file
-      fileStream.open("p_q.txt", std::ios::out);
-      fileStream << p << std::endl;
-      fileStream << q << std::flush;
-      if (fileStream) std::cout << "p and q saved to file" << std::endl;
-      else std::cout << "file output failed for p and q" << std::endl;
-      fileStream.close();
+      std::cout << "\nsaving p and q..." << std::endl;
+      saveToFile("p_q.txt", p, q);
 
       // get key parameters
       BigUnsigned chi = (p - 1) * (q - 1);
+
+      std::cout << "\ncalculating e..." << std::endl;
       BigUnsigned e = getE(chi);
+      std::cout << "e: " << e << std::endl;
+
+      std::cout << "\ncalculating d..." << std::endl;
       BigUnsigned d = getD(e, chi);      
+      std::cout << "d: " << d << std::endl;
+
       BigUnsigned n = p * q;
+      std::cout << "\nn: " << n << std::endl;
 
       // save keys to files
-      fileStream.open("e_n.txt", std::ios::out);
-      fileStream << e << std::endl;
-      fileStream << n;
-      fileStream.close();
+      std::cout << "\nsaving e and n..." << std::endl;
+      saveToFile("e_n.txt", e, n);
 
-      fileStream.open("d_n.txt", std::ios::out);
-      fileStream << d << std::endl;
-      fileStream << n;
-      fileStream.close();
+      std::cout << "\nsaving d and n..." << std::endl;
+      saveToFile("d_n.txt", d, n);
       
 	} catch(char const* err) {
 		std::cout << "The library threw an exception:\n"
