@@ -3,11 +3,25 @@
 **/
 
 #include <string.h>
+#include <vector>
 #include <iostream>
 #include <fstream>
 #include "sha256.h"
 #include "BigIntegerLibrary.hh"
 
+// function to run encryption function (m^e) % n faster for large values of e and n
+// given (a^2) % n = (a % n)^2 % n
+BigUnsigned expMod(BigUnsigned base, BigUnsigned power, BigUnsigned mod) {
+   // stopping case
+   if (power < 2) return base % mod;
+
+   // recursive case
+   BigUnsigned result = expMod(base, power / 2, mod);
+   result *= result;
+   if (power % 2 != 0) result *= (BigUnsigned(base) % mod);
+
+   return result % mod;
+} 
  
 int main(int argc, char *argv[])
 {
@@ -51,16 +65,98 @@ int main(int argc, char *argv[])
       
       //std::cout<<memblock;
         
-      if (argv[1][0]=='s') {
-         std::cout << "\n"<<"Need to sign the doc.\n";
-         //.....
-         
+      
+      try {
+         // generate the SHA hash from the file contents
+         std::string hashStr = sha256(memblock);
+         std::cout << "hash from file: " << hashStr << std::endl;
+
+         // file containing hash signature
+         std::string signFilename = filename + ".signature";
+
+         if (argv[1][0]=='s') {
+            std::cout << "\n"<<"Need to sign the doc.\n";
+            //.....
+
+            // get decryption key pair (d, n)
+            std::string dStr, nStr;
+            std::ifstream keyFile("d_n.txt");
+            getline(keyFile, dStr);
+            getline(keyFile, nStr);
+            keyFile.close();
+
+            BigUnsigned d = stringToBigUnsigned(dStr);
+            BigUnsigned n = stringToBigUnsigned(nStr);
+
+            // decrypt the hash to generate the signature
+            std::vector<BigUnsigned> signature;
+            std::cout << "Generating signature..." << std::endl;
+            for (char c : hashStr) {
+               // convert each character to ASCII code to run the encryption function
+               // of (m^d) % n given value m where m < n
+               signature.push_back(expMod(BigUnsigned(static_cast<int>(c)), d, n));
+            }
+
+            /* driver code to test encryption key
+            std::string eStr;
+            keyFile.open("e_n.txt");
+            getline(keyFile, eStr);
+            keyFile.close();
+            BigUnsigned e = stringToBigUnsigned(eStr);
+
+            std::cout << "\nhash from encryption: ";
+            for (BigUnsigned i : signature) {
+               std::cout << static_cast<char>(expMod(i, e, n).toInt());
+            }
+            std::cout << std::endl;
+            */
+
+            // save the signature
+            std::cout << "Saving signature..." << std::endl;
+            std::ofstream signFile(signFilename.c_str(), std::ios::out);
+            for (BigUnsigned i : signature) {
+               signFile << i << std::endl;
+            }
+            signFile.close();
+            std::cout << "Saved to file " << signFilename << std::endl;
+         }
+         else {
+            std::cout << "\n"<<"Need to verify the doc.\n";
+            //.....
+
+            // get encryption key pair (e, n)
+            std::string eStr, nStr;
+            std::ifstream keyFile("e_n.txt");
+            getline(keyFile, eStr);
+            getline(keyFile, nStr);
+            keyFile.close();
+
+            BigUnsigned e = stringToBigUnsigned(eStr);
+            BigUnsigned n = stringToBigUnsigned(nStr);
+
+            // get the signature from the file
+            std::cout << "Getting signature..." << std::endl;
+            
+            std::vector<BigUnsigned> signature;
+
+            std::ifstream signFile(signFilename.c_str(), std::ios::in);
+            while (!signFile.eof) {
+               std::string s;
+               getline(signFile, s);
+               signature.push_back(stringToBigUnsigned(s));
+            }
+            signFile.close();
+
+            // encrypt the existing signature to convert it back to a hash
+
+            // compare the two hashes
+            
+         }
       }
-      else {
-         std::cout << "\n"<<"Need to verify the doc.\n";
-         //.....
-         
+      catch (const char* c) {
+         std::cerr << c << std::endl;
       }
+
       delete[] memblock;
     }
     return 0;
