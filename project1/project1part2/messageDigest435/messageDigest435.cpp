@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
       try {
          // generate the SHA hash from the file contents
          std::string hashStr = sha256(memblock);
-         std::cout << "hash from file: " << hashStr << std::endl;
+         std::cout << "\nHash from file: [" << hashStr << "]" << std::endl;
 
          // file containing hash signature
          std::string signFilename = filename + ".signature";
@@ -136,21 +136,32 @@ int main(int argc, char *argv[])
 
             // get the signature from the file
             std::cout << "Getting signature..." << std::endl;
-            
             std::vector<BigUnsigned> signature;
 
             std::ifstream signFile(signFilename.c_str(), std::ios::in);
-            while (!signFile.eof) {
+            if (!signFile) throw("Signature file not found. Try running the program in signing mode first.\n");
+            while (!signFile.eof()) {
                std::string s;
                getline(signFile, s);
-               signature.push_back(stringToBigUnsigned(s));
+               if (s != "" && s != " ") signature.push_back(stringToBigUnsigned(s));
             }
             signFile.close();
 
             // encrypt the existing signature to convert it back to a hash
+            std::cout << "Getting hash..." << std::endl;
+            std::string newHash = "";
+            for (BigUnsigned i : signature) {
+               newHash += static_cast<char>(expMod(i, e, n).toInt());
+            }
 
             // compare the two hashes
-            
+            std::cout << "Hash from encryption: [" << newHash  << "]" << std::endl;
+            if (newHash == hashStr) {
+               std::cout << "The hashes match. The document is authentic." << std::endl;
+            }
+            else {
+               std::cout << "The hashes are different. The document has been modified since signing." << std::endl;
+            }
          }
       }
       catch (const char* c) {
