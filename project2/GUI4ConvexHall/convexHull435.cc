@@ -41,7 +41,7 @@ int get_cross_product(XY &v1, XY &v2) {
 
 // dot product of two (x, y) vectors, used for Jarvis March
 int get_dot_product(XY &v1, XY &v2) {
-   int result;
+   int result = (v1.x * v2.x) - (v1.y * v2.y);
    return result;
 }
 
@@ -102,6 +102,8 @@ int main(int argc, char *argv[])
          for (XY p : points) std::cout << p.x << " " << p.y << "\n";
 
          std::vector<XY> hull; // set of verticies
+
+         std::cout << "\nCalculating hull..." << std::endl;
          
          if (std::toupper(algType[0])=='G') {
             //call your Graham Scan algorithm to solve the problem
@@ -131,13 +133,27 @@ int main(int argc, char *argv[])
             ++pointIter;
 
             // for each remaining point:
-            // compare the vector between the last two points in the hull
-            // with the vector between the currently selected point and the last point
-            // if the new edge leans rightward compared to the previous edge, delete
+            // compare the vector between the last two points in the hull with the vector 
+            // between the currently selected point and the last point
+            // if the new edge leans rightward compared to the previous edge, pop previous edge
             // the last point in the hull and try again
-            // otherwise, add the new point to the hull
+            // otherwise, push the new point to the hull
             while (pointIter != sortedPoints.end()) {
                XY p = pointIter->second;
+               // push immediately if hull only contains one point
+               if (hull.size() > 1) {
+                  // determine relative direction of vectors through dot product
+                  // positive dot product means left (push), negative means right (pop)
+                  XY v1 = get_distance_vector(hull[hull.size() - 1], hull[hull.size() - 2]);
+                  XY v2 = get_distance_vector(p, hull[hull.size() - 1]);
+                  if (get_dot_product(v1, v2) < 0) {
+                     // pop case
+                     hull.pop_back();
+                     continue;
+                  }
+               }
+               // push case
+               hull.push_back(p);
                ++pointIter;
             }
 
@@ -168,7 +184,12 @@ int main(int argc, char *argv[])
          if (!outputFilestream) throw(std::runtime_error("Failed to open output file."));
 
          std::cout << "\nHull: \n";
-         for (XY p : hull) std::cout << p.x << " " << p.y << "\n";
+         for (XY p : hull) {
+            outputFilestream << p.x << " " << p.y << "\n";
+            std::cout << p.x << " " << p.y << "\n";
+         }
+
+         std::cout << "\nVertices written to file " << outputFile << "\n";
 
          outputFilestream.close();
       }
