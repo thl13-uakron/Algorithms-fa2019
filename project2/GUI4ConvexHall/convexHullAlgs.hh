@@ -45,11 +45,11 @@ std::vector<XY> graham_scan(std::vector<XY> points) {
       XY p = pointIter->second;
       // push immediately if hull only contains one point
       if (hull.size() > 1) {
-         // determine relative direction of vectors through dot product
-         // positive dot product means left (push), negative means right (pop)
-         XY v1 = get_distance_vector(hull[hull.size() - 1], hull[hull.size() - 2]);
-         XY v2 = get_distance_vector(p, hull[hull.size() - 1]);
-         if (get_dot_product(v1, v2) < 0) {
+         // determine relative direction of vectors through cross product
+         // positive cross product means left (push), negative means right (pop)
+         XY v1 = get_distance_vector(hull[hull.size() - 2], hull[hull.size() - 1]);
+         XY v2 = get_distance_vector(hull[hull.size() - 1], p);
+         if (get_cross_product(v1, v2) < 0) {
             // pop case
             hull.pop_back();
             continue;
@@ -76,8 +76,9 @@ std::vector<XY> jarvis_march(std::vector<XY> points) {
    // for each remaining point on the hull:
    // compare the vector formed by the last two points (starting with a vertical line) 
    // with the vector formed by the last point and each of the other points 
-   // select the point that forms the lowest angle to be the next point of the hull
-   // the hull is complete when the starting point is selected
+   // the point whose vector bends the least compared to the previous vector is selected
+   // as the next point on the hull, and removed from the set 
+   // the hull is complete when the starting point, which isn't removed, is selected again
 
    return hull;
 }
