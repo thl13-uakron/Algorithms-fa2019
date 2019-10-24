@@ -12,7 +12,7 @@ struct XY {
 
 // distance between two points in (x, y) form
 XY get_distance_vector(XY &p1, XY &p2) {
-   return XY(p2.x - p1.x, p2.y - p1.x);
+   return XY(p2.x - p1.x, p2.y - p1.y);
 }
 
 // tangent formed by edge between between two points relative to vertical line extending up from p1
