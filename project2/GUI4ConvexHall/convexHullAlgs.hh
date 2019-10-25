@@ -1,5 +1,6 @@
 #include <vector>
 #include <map>
+#include <cmath>
 
 #include "convexHullHelpers.hh"
 
@@ -79,6 +80,41 @@ std::vector<XY> jarvis_march(std::vector<XY> points) {
    // the point whose vector bends the least compared to the previous vector is selected
    // as the next point on the hull, and removed from the set 
    // the hull is complete when the starting point, which isn't removed, is selected again
+
+   XY v1(0, 1), v2; // vectors
+
+   // point selected to be added to hull, represented as iterator so it can be erased easily
+   auto nextVertex = points.begin(); 
+
+   // angles formed by vectors are measured through cosine
+   double cosine, maxCosine;
+
+   while (true) {
+      // pick a starting candidate
+      nextVertex = points.begin();
+      v2 = get_distance_vector(hull[hull.size() - 1], *nextVertex);
+      maxCosine = get_cosine(v1, v2);
+
+      // find the vertex by comparing the currently selected candidate to the remaining points
+      for (auto p = points.begin(); p < points.end(); ++p) {
+         v2 = get_distance_vector(hull[hull.size() - 1], *p);
+         // the cosine increasess as the relative angle shrinks, reaching 1 for parallel vectors
+         cosine = get_cosine(v1, v2);
+         if (cosine > maxCosine) {
+            maxCosine = cosine;
+            nextVertex = p;
+         }
+      }
+
+      if (*nextVertex != hull[0]) {
+         hull.push_back(*nextVertex);
+         points.erase(nextVertex);
+         v1 = get_distance_vector(hull[hull.size() - 2], hull[hull.size() - 1]);
+      }
+      else {
+         break;
+      }
+   }
 
    return hull;
 }
