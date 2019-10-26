@@ -122,13 +122,36 @@ std::vector<XY> jarvis_march(std::vector<XY> points) {
 std::vector<XY> quickhull(std::vector<XY> points) {
    std::vector<XY> hull;
 
-   // find two starting points as leftmost and rightmost points
+   // find the two starting points as the leftmost and rightmost points
+   XY leftPoint = points[0], rightPoint = points[0];
+   for (int i = 1; i < points.size(); ++i) {
+      if (points[i].x < leftPoint.x) leftPoint = points[i];
+      else if (points[i].x > rightPoint.x) rightPoint = points[i];
+   }
 
-   // split points into two halfs based on line formed by points
+   // split the points into two halfs based on the partition line formed by starting points
+   std::vector<XY> topPoints, bottomPoints;
+   double partitionSlope = get_slope(leftPoint, rightPoint);
+   for (XY p : points) {
+      if (p != leftPoint && p != rightPoint) {
+         // the side of the parition that the point is one is determined by 
+         // the slope of the vector leading to it from the left endpoint
+         // compared to the slope of the vector from the left endpoint to the right endpoint
+         double slope = get_slope(leftPoint, p);
+         if (slope > partitionSlope) topPoints.push_back(p);
+         else if (slope < partitionSlope) bottomPoints.push_back(p);
+      }
+   }
 
    // get hulls from each half
+   std::vector<XY> topHull = partial_quickhull(leftPoint, rightPoint, topPoints);
+   std::vector<XY> bottomHull = partial_quickhull(leftPoint, rightPoint, bottomPoints);
 
-   // put hulls together in left=to-right order
+   // put the hulls together in left=to-right order
+   hull.push_back(leftPoint);
+   for (int i = 0; i < topHull.size(); ++i) hull.push_back(topHull[i]);
+   hull.push_back(rightPoint);
+   for (int i = bottomHull.size() - 1; i >= 0; --i) hull.push_back(bottomHull[i]);
 
    return hull;
 }
