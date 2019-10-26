@@ -21,20 +21,23 @@ XY get_distance_vector(XY &p1, XY &p2) {
 // result corresponds to value of angle between edge and horizontal line extending right from p1
 // used for graham scan
 double get_tangent(XY &p1, XY &p2) {
-   double result = static_cast<double>(p1.x - p2.x) / (p2.y - p1.y);
-   return result;
+   // double result = 
+   return static_cast<double>(p1.x - p2.x) / (p2.y - p1.y);
+   // return result;
 }
 
 // cross product of two (x, y) vectors, used for Graham Scan
 int get_cross_product(XY &v1, XY &v2) {
-   int result = (v1.x * v2.y) - (v1.y * v2.x);
-   return result;
+   // int result = 
+   return (v1.x * v2.y) - (v1.y * v2.x);
+   // return result;
 }
 
 // dot product of two (x, y) vectors, used for Jarvis March
 int get_dot_product(XY &v1, XY &v2) {
-   int result = (v1.x * v2.x) + (v1.y * v2.y);
-   return result;
+   // int result = 
+   return (v1.x * v2.x) + (v1.y * v2.y);
+   // return result;
 }
 
 // magnitude of vector, used for Jarvis March
@@ -50,18 +53,24 @@ double get_cosine(XY &v1, XY &v2) {
 
 // distance from a point to a line formed by two other points, used for Quickhull
 double get_distance_to_line(XY &p, XY &leftPoint, XY &rightPoint) {
-   // given the line between leftPoint and rightPoint represented as ax + by + c - 0
-   // the distance to p can be calculated as 
-   double a, b, c;
-   double result;
+   // calculated as |(y2 - y1)x0 - (x2 - x1)y0 + x1y2 + x2y1| / sqrt((y2 - y1)^2 + (x2 - x1)^2)
+   // given p = (x0, y0), leftPoint = (x1, x1), rightPoint = (x2, y2)
+   double result = ((rightPoint.y - leftPoint.y) * p.x) - ((rightPoint.x - leftPoint.x) * p.y);
+   result += (leftPoint.x * rightPoint.y) + (rightPoint.x * leftPoint.y);
+   result = abs(result) / sqrt(pow(rightPoint.y - leftPoint.y, 2) + pow(rightPoint.x - leftPoint.x, 2));
    return result;
+}
+
+// slope of the distance vector leading from p1 to p2, used for Quickhull
+double get_slope(XY &p1, XY &p2) {
+   return static_cast<double>(p2.y - p1.y) / (p2.x - p1.x);
 }
 
 // given a set of points on one side of a line formed by two other points
 // given that those two points are known to be part of the hull
 // recusively eliminate points that can't be on the hull until there is no more uncertainty
 // used for Quickhull
-std::vector<XY> partial_quickhull(XY &rightPoint, XY &leftPoint, std::vector<XY> &points) {
+std::vector<XY> partial_quickhull(XY &leftPoint, XY &rightPoint, std::vector<XY> &points) {
    std::vector<XY> result;
 
    // base cases given 1 or 0 points in set
@@ -69,15 +78,27 @@ std::vector<XY> partial_quickhull(XY &rightPoint, XY &leftPoint, std::vector<XY>
    if (points.size() <= 1) return result;
 
    // find point furthest away from line
-   XY farPoint;
+   XY farPoint = points[0];
+   double maxDistance = get_distance_to_line(farPoint, leftPoint, rightPoint);
+   double distance;
+   for (int i = 1; i < points.size(); ++i) {
+      distance = get_distance_to_line(points[i], leftPoint, rightPoint);
+      if (distance > maxDistance) {
+         farPoint = points[i];
+         maxDistance = distance;
+      }
+   }
 
-   // selected points are guaranteed to be on hull
+   // the selected point is guaranteed to be on hull
    // points inside the triangle created by the selected points cannot be on the hull
-
    // points outside of triangle may or may not be on hull
-   // split into right half and left half
+
+   // split outside points into right half and left half
    // repeat process on each half if not empty
+   std::vector<XY> leftPoints, rightPoints;
+   std::vector<XY> leftHull, rightHull;
 
    // return known verticies listed in left-to-right order
+   result.push_back(farPoint);
    return result;
 }
