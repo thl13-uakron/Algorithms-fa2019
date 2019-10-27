@@ -83,7 +83,6 @@ std::vector<XY> partial_quickhull(XY &leftPoint, XY &rightPoint, std::vector<XY>
    XY farPoint = points[0];
    double maxDistance = get_distance_to_line(farPoint, leftPoint, rightPoint);
    double distance;
-   std::cout << leftPoint.x << " " << leftPoint.y << " " << rightPoint.x << " " << rightPoint.y;
    for (int i = 1; i < points.size(); ++i) {
       distance = get_distance_to_line(points[i], leftPoint, rightPoint);
       if (distance > maxDistance) {
@@ -91,7 +90,6 @@ std::vector<XY> partial_quickhull(XY &leftPoint, XY &rightPoint, std::vector<XY>
          maxDistance = distance;
       }
    }
-   std::cout << " " << farPoint.x << " " << farPoint.y << "\n";
 
    // the left point, right point, and farthest point are guaranteed to be on hull
    // points inside the triangle created by the selected points cannot be on the hull
