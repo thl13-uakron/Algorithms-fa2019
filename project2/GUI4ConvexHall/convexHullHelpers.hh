@@ -77,10 +77,13 @@ std::vector<XY> partial_quickhull(XY &leftPoint, XY &rightPoint, std::vector<XY>
    if (points.size() == 1) result.push_back(points[0]);
    if (points.size() <= 1) return result;
 
+   // recursive case:
+
    // find point furthest away from line
    XY farPoint = points[0];
    double maxDistance = get_distance_to_line(farPoint, leftPoint, rightPoint);
    double distance;
+   std::cout << leftPoint.x << " " << leftPoint.y << " " << rightPoint.x << " " << rightPoint.y;
    for (int i = 1; i < points.size(); ++i) {
       distance = get_distance_to_line(points[i], leftPoint, rightPoint);
       if (distance > maxDistance) {
@@ -88,17 +91,49 @@ std::vector<XY> partial_quickhull(XY &leftPoint, XY &rightPoint, std::vector<XY>
          maxDistance = distance;
       }
    }
+   std::cout << " " << farPoint.x << " " << farPoint.y << "\n";
 
-   // the selected point is guaranteed to be on hull
+   // the left point, right point, and farthest point are guaranteed to be on hull
    // points inside the triangle created by the selected points cannot be on the hull
    // points outside of triangle may or may not be on hull
 
-   // split outside points into right half and left half
-   // repeat process on each half if not empty
-   std::vector<XY> leftPoints, rightPoints;
-   std::vector<XY> leftHull, rightHull;
+   // split the outside points based on whether they're to the right or to the left of the triangle
+   // as determined by the angle it forms around the enpoints of the baseline
+   // compared to the angle that the farthest point forms around the same endpoints
+   // compute the needed edge vectors beforehand since they'll need to be reused
+   XY leftTriangleBase = get_distance_vector(leftPoint, rightPoint);
+   XY triangleEdge = get_distance_vector(leftPoint, farPoint);
+   double leftTriangleCosine = get_cosine(leftTriangleBase, triangleEdge);
+
+   XY rightTriangleBase = get_distance_vector(rightPoint, leftPoint);
+   triangleEdge = get_distance_vector(rightPoint, farPoint);
+   double rightTriangleCosine = get_cosine(rightTriangleBase, triangleEdge);
+
+   double currentCosine;
+   XY currentEdge;   
+
+   std::vector<XY> leftHalf, rightHalf;
+   for (XY p : points) {
+      currentEdge = get_distance_vector(leftPoint, p);
+      currentCosine = get_cosine(leftTriangleBase, currentEdge);
+      if (currentCosine < leftTriangleCosine) {
+         leftHalf.push_back(p);
+         continue;
+      }
+      currentEdge = get_distance_vector(rightPoint, p);
+      currentCosine = get_cosine(rightTriangleBase, currentEdge);
+      if (currentCosine < rightTriangleCosine) {
+         rightHalf.push_back(p);
+      }
+   }
+
+   // repeat the process of each subset
+   std::vector<XY> leftHull = partial_quickhull(leftPoint, farPoint, leftHalf);
+   std::vector<XY> rightHull = partial_quickhull(farPoint, rightPoint, rightHalf);
 
    // return known verticies listed in left-to-right order
+   for (XY p : leftHull) result.push_back(p);
    result.push_back(farPoint);
+   for (XY p : rightHull) result.push_back(p);
    return result;
 }
