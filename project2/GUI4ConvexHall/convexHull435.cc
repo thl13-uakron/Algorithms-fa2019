@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
             hull = graham_scan(points);
             outputFile = "hull_G.txt";
          } 
-         else if (std::toupper(algType[1])=='J') {
+         else if (std::toupper(algType[0])=='J') {
             //call your Jarvis March algorithm to solve the problem
             hull = jarvis_march(points);
             outputFile = "hull_J.txt";
@@ -68,8 +68,10 @@ int main(int argc, char *argv[])
          if (!outputFilestream) throw(std::runtime_error("Failed to open output file."));
 
          std::cout << "\nHull: \n";
-         for (XY p : hull) {
-            outputFilestream << p.x << " " << p.y << "\n";
+         for (int i = 0; i < hull.size(); ++i) {
+            XY p = hull[i];
+            outputFilestream << p.x << " " << p.y;
+            if (i < hull.size() - 1) outputFilestream << "\n";
             std::cout << p.x << " " << p.y << "\n";
          }
 

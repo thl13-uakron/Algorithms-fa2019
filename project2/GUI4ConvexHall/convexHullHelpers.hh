@@ -56,7 +56,7 @@ double get_distance_to_line(XY &p, XY &leftPoint, XY &rightPoint) {
    // calculated as |(y2 - y1)x0 - (x2 - x1)y0 + x1y2 + x2y1| / sqrt((y2 - y1)^2 + (x2 - x1)^2)
    // given p = (x0, y0), leftPoint = (x1, x1), rightPoint = (x2, y2)
    double result = ((rightPoint.y - leftPoint.y) * p.x) - ((rightPoint.x - leftPoint.x) * p.y);
-   result += (leftPoint.x * rightPoint.y) + (rightPoint.x * leftPoint.y);
+   result += (leftPoint.y * rightPoint.x) - (rightPoint.y * leftPoint.x);
    result = abs(result) / sqrt(pow(rightPoint.y - leftPoint.y, 2) + pow(rightPoint.x - leftPoint.x, 2));
    return result;
 }
@@ -80,6 +80,7 @@ std::vector<XY> partial_quickhull(XY &leftPoint, XY &rightPoint, std::vector<XY>
    // recursive case:
 
    // find point furthest away from line
+   // the invertDistance method was added after I realized that the get_distance_to_line method calculated the
    XY farPoint = points[0];
    double maxDistance = get_distance_to_line(farPoint, leftPoint, rightPoint);
    double distance;
@@ -111,16 +112,17 @@ std::vector<XY> partial_quickhull(XY &leftPoint, XY &rightPoint, std::vector<XY>
    XY currentEdge;   
 
    std::vector<XY> leftHalf, rightHalf;
+
    for (XY p : points) {
       currentEdge = get_distance_vector(leftPoint, p);
       currentCosine = get_cosine(leftTriangleBase, currentEdge);
-      if (currentCosine < leftTriangleCosine) {
+      if (abs(currentCosine) < abs(leftTriangleCosine)) {
          leftHalf.push_back(p);
          continue;
       }
       currentEdge = get_distance_vector(rightPoint, p);
       currentCosine = get_cosine(rightTriangleBase, currentEdge);
-      if (currentCosine < rightTriangleCosine) {
+      if (abs(currentCosine) < abs(rightTriangleCosine)) {
          rightHalf.push_back(p);
       }
    }
