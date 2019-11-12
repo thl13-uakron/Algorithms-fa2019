@@ -80,7 +80,7 @@ bitfield_t append_bits(bitfield_t left, bitfield_t right) {
 // read the smallest possible number of bits from a file stream to a bitfield
 bitfield_t read_byte(std::ifstream &infileStream) {
   unsigned char c;
-  infileStream >> c;
+  c = static_cast<unsigned char>(infileStream.get());
   return int2BinaryString(static_cast<int>(c), BYTESIZE);
 }
 // write the smallest possible number of bits from a bitfield to a file stream
@@ -127,7 +127,7 @@ void compress_file(std::string infileName, std::string outfileName) {
     // read and compress contents of input file
     while (bytesRead < numBytes) {
       // record character
-      infileStream >> currentChar;
+      currentChar = static_cast<unsigned char>(infileStream.get());
 
       // check for mapping of character sequence formed by new character appended to existing sequence
       newCharSequence = charSequence;
@@ -135,6 +135,7 @@ void compress_file(std::string infileName, std::string outfileName) {
       if (mappings.find(newCharSequence) == mappings.end()) {
         // record bit code for existing character sequence into output file
         bitSequence = append_bits(bitSequence, int2BinaryString(mappings[charSequence], codeLength));
+        // std::cout << mappings[charSequence] << " " << charSequence << std::endl;
 
         // map new sequence
         if (numMappings < (1 << codeLength)) {
