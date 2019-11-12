@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iterator>
 #include <vector> 
+#include <unordered_map>
 #include <sys/stat.h>
 
 /*
@@ -23,8 +24,8 @@ typedef std::string bitfield_t;
 
 // helper functions for handling bit representations
 
-std::string int2BinaryString(int c, int cl) {
-      std::string p = ""; //a binary code string with code length = cl
+bitfield_t int2BinaryString(int c, int cl) {
+      bitfield_t p = ""; //a binary code string with code length = cl
       int code = c;
       while (c>0) {         
        if (c%2==0)
@@ -44,7 +45,7 @@ std::string int2BinaryString(int c, int cl) {
       }
       return p;
 }
-int binaryString2Int(std::string p) {
+int binaryString2Int(bitfield_t p) {
    int code = 0;
    if (p.size()>0) {
       if (p.at(0)=='1') 
@@ -76,49 +77,15 @@ bitfield_t get_right_bits(bitfield_t bits, int numBits) {
 bitfield_t append_bits(bitfield_t left, bitfield_t right) {
   return left + right;
 }
-// read the smallest possible number of bits from a file stream
+// read the smallest possible number of bits from a file stream to a bitfield
 bitfield_t read_byte(std::ifstream &infileStream) {
   unsigned char c;
   infileStream >> c;
   return int2BinaryString(static_cast<int>(c), BYTESIZE);
 }
-// write the smallest possible number of bits to a file stream
-void write_byte(std::ofstream &outfileStream, bitfield_t bits) {
-  //
-}
-
-
-// Compress a string to a list of output symbols.
-// The result will be written to the output iterator
-// starting at "result"; the final iterator is returned.
-template <typename Iterator>
-Iterator compress(const std::string &uncompressed, Iterator result) {
-  // Build the dictionary.
-  int dictSize = 256;
-  std::map<std::string,int> dictionary;
-  for (int i = 0; i < 256; i++)
-    dictionary[std::string(1, i)] = i;
- 
-  std::string w;
-  for (std::string::const_iterator it = uncompressed.begin();
-       it != uncompressed.end(); ++it) {
-    char c = *it;
-    std::string wc = w + c;
-    if (dictionary.count(wc))
-      w = wc;
-    else {
-      *result++ = dictionary[w];
-      // Add wc to the dictionary. Assuming the size is 4096!!!
-      if (dictionary.size()<4096)
-         dictionary[wc] = dictSize++;
-      w = std::string(1, c);
-    }
-  }
- 
-  // Output the code for w.
-  if (!w.empty())
-    *result++ = dictionary[w];
-  return result;
+// write the smallest possible number of bits from a bitfield to a file stream
+void write_byte(bitfield_t bits, std::ofstream &outfileStream) {
+  outfileStream << static_cast<unsigned char>(binaryString2Int(get_left_bits(bits, BYTESIZE)));
 }
 
 // given the name of a source file and an output file
@@ -128,45 +95,86 @@ void compress_file(std::string infileName, std::string outfileName) {
     std::ifstream infileStream(infileName);
     std::ofstream outfileStream(outfileName);
 
+    // number of bits per code
+    int codeLength = BITS;
+
     // list of sequence-to-code mappings
     std::unordered_map<std::string, int> mappings;
+    for (int i = 0; i < ASCII_SIZE; ++i) {
+      std::string s = "";
+      s += static_cast<unsigned char>(i);
+      mappings[s] = i;
+    }
+    // number of mappings recorded so far
+    int numMappings = ASCII_SIZE;
+
+    // hold sequence of characters read from input file
+    std::string charSequence = ""; // prior to current character
+    std::string newCharSequence; // including current character
+
+    // hold sequence of bits to write to output file
+    bitfield_t bitSequence = "";
+
+    // hold last character read from file
+    unsigned char currentChar;
+
+    // bytes in file and number of bytes recorded so far
+    struct stat infileStat;
+    stat(infileName.c_str(), &infileStat);
+    long numBytes = infileStat.st_size;
+    long bytesRead = 0;
+
+    // read and compress contents of input file
+    while (bytesRead < numBytes) {
+      // record character
+      infileStream >> currentChar;
+
+      // check for mapping of character sequence formed by new character appended to existing sequence
+      newCharSequence = charSequence;
+      newCharSequence += currentChar;
+      if (mappings.find(newCharSequence) == mappings.end()) {
+        // record bit code for existing character sequence into output file
+        bitSequence = append_bits(bitSequence, int2BinaryString(mappings[charSequence], codeLength));
+
+        // map new sequence
+        if (numMappings < (1 << codeLength)) {
+          mappings[newCharSequence] = numMappings;
+          ++numMappings;
+        }
+
+        // reset character sequence
+        charSequence = "";
+        charSequence += currentChar;
+      }
+      else {
+        // add character to existing sequence
+        charSequence = newCharSequence;
+      }
+
+      // write bits to output file in smallest possible units
+      while (get_bit_length(bitSequence) >= BYTESIZE) {
+        write_byte(bitSequence, outfileStream);
+        bitSequence = get_right_bits(bitSequence, get_bit_length(bitSequence) - BYTESIZE);
+      }
+
+      ++bytesRead;
+    }
+
+    // record code for remaining character sequence to file if needed
+    if (get_bit_length(charSequence) > 0) 
+      bitSequence = append_bits(bitSequence, int2BinaryString(mappings[charSequence], codeLength));
+
+    // write remaining bits to output file, add bits if needed to form a full byte
+    while (get_bit_length(bitSequence) > 0) {
+      if (get_bit_length(bitSequence) < BYTESIZE) {
+        bitSequence = append_bits(bitSequence, int2BinaryString(0, BYTESIZE - get_bit_length(bitSequence)));
+      }
+      write_byte(bitSequence, outfileStream);
+      bitSequence = get_right_bits(bitSequence, get_bit_length(bitSequence) - BYTESIZE);
+    }
 
     infileStream.close();
     outfileStream.close();
-}
- 
-// Decompress a list of output ks to a string.
-// "begin" and "end" must form a valid range of ints
-template <typename Iterator>
-std::string decompress(Iterator begin, Iterator end) {
-  // Build the dictionary.
-  int dictSize = 256;
-  std::map<int,std::string> dictionary;
-  for (int i = 0; i < 256; i++)
-    dictionary[i] = std::string(1, i);
- 
-  std::string w(1, *begin++);
-  std::string result = w;
-  std::cout << result<<"???:::\n";
-  std::string entry;
-  for ( ; begin != end; begin++) {
-    int k = *begin;
-    if (dictionary.count(k))
-      entry = dictionary[k];
-    else if (k == dictSize)
-      entry = w + w[0];
-    else
-      throw "Bad compressed k";
- 
-    result += entry;
- 
-    // Add w+entry[0] to the dictionary.
-    if (dictionary.size()<4096)
-      dictionary[dictSize++] = w + entry[0];
- 
-    w = entry;
-  }
-  return result;
 }
 
 // give the name of an input file containing LZW-compressed data, and an output file
@@ -187,7 +195,7 @@ void decompress_file(std::string infileName, std::string outfileName) {
     std::vector<std::string> mappings;
     for (int i = 0; i < ASCII_SIZE; ++i) {
       mappings.push_back("");
-      mappings[i] += static_cast<unsigned char>('\0' + i);
+      mappings[i] += static_cast<unsigned char>(i);
     }
 
     // hold sequence of bits from file stream
@@ -219,7 +227,7 @@ void decompress_file(std::string infileName, std::string outfileName) {
     bitSequence = get_right_bits(bitSequence, get_bit_length(bitSequence) - codeLength);
     currentWord = mappings[currentCode]; // get mapping of code
     outfileStream << currentWord; // put first character into output file
-    std::cout << currentCode << " " << currentWord << std::endl;
+    // std::cout << currentCode << " " << currentWord << std::endl;
 
     // get remaining codes from file
     while (bytesRead < numBytes) {
@@ -243,18 +251,24 @@ void decompress_file(std::string infileName, std::string outfileName) {
       }
 
       // record new mapping
-      mappings.push_back(currentWord);
-      // mappings[mappings.size() - 1] += nextWord.at(0);
+      if (mappings.size() < (1 << codeLength)) {
+        mappings.push_back(currentWord);
+        mappings[mappings.size() - 1] += nextWord.at(0);
+      }
 
       currentWord = nextWord; // record sequence for use in next iteration
       outfileStream << currentWord; // put sequence into output file
-      std::cout << nextCode << " " << nextWord << std::endl;
+      // std::cout << nextCode << " " << nextWord << std::endl;
     }
+
+    // for (int i = ASCII_SIZE; i < mappings.size(); ++i) std::cout << i << " " << mappings[i] << std::endl;
 
     infileStream.close();
     outfileStream.close();
 }
  
+
+
 int main(int argc, char* argv[]) {
   /*
   std::vector<int> compressed;
@@ -278,7 +292,7 @@ int main(int argc, char* argv[]) {
     if (strcmp(argv[1], "c") == 0 || strcmp(argv[1], "C") == 0) {
       outfileName = infileName + ".lzw";
       std::cout << "Compressing file " << infileName << std::endl;
-      // compress_file(infileName, outfileName);
+      compress_file(infileName, outfileName);
     }
     else {
       outfileName = infileName;
