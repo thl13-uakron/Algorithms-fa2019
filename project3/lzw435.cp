@@ -95,6 +95,13 @@ void compress_file(std::string infileName, std::string outfileName) {
     std::ifstream infileStream(infileName);
     std::ofstream outfileStream(outfileName);
 
+    if (!infileStream) {
+      throw std::runtime_error("Failed to open file " + infileName);
+    }
+    if (!outfileStream) {
+      throw std::runtime_error("Failed to open file " + outfileName);
+    }
+
     // number of bits per code
     int codeLength = BITS;
 
@@ -187,6 +194,9 @@ void decompress_file(std::string infileName, std::string outfileName) {
 
     if (!infileStream) {
       throw std::runtime_error("Failed to open file " + infileName);
+    }
+    if (!outfileStream) {
+      throw std::runtime_error("Failed to open file " + outfileName);
     }
 
     // number of bits per code
@@ -297,7 +307,10 @@ int main(int argc, char* argv[]) {
     }
     else {
       outfileName = infileName;
-      outfileName.replace(outfileName.find(".lzw"), 4, "2");
+      outfileName.replace(outfileName.find(".lzw"), 4, "");
+      // handle existing file extensions
+      if (outfileName.find(".") == std::string::npos) outfileName += "2";
+      else outfileName.insert(outfileName.find("."), "2");
       std::cout << "Expanding file " << infileName << std::endl;
       decompress_file(infileName, outfileName);
     }
