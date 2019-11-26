@@ -19,6 +19,9 @@ void ignore_comments(std::ifstream &infileStream, std::string &s);
 // get pixel matrix from .pgm file
 pixelMatrix read_pixel_matrix(std::string infileName);
 
+// print pixel values
+void print_pixel_matrix(pixelMatrix &pixel_matrix);
+
 // calculate energy value corresponding to each pixel in matrix
 pixelMatrix get_energy_matrix(pixelMatrix &pixel_matrix);
 
@@ -47,8 +50,8 @@ int main(int argc, char** argv) {
 		pixelMatrix pixel_matrix = read_pixel_matrix(infileName); // get pixel color values
 		pixelMatrix energy_matrix = get_energy_matrix(pixel_matrix); // get pixel energy values
 
-		remove_vertical_seams(pixel_matrix, energy_matrix, verticalSeams); // remove seams
 		remove_horizontal_seams(pixel_matrix, energy_matrix, horizontalSeams);
+		remove_vertical_seams(pixel_matrix, energy_matrix, verticalSeams); // remove seams
 
 		write_pixel_matrix(outfileName, pixel_matrix); // write result to output file
 
@@ -88,6 +91,9 @@ pixelMatrix read_pixel_matrix(std::string infileName) {
 	ignore_comments(infileStream, s);
 	int y_size = stoi(s); 
 
+	// read color count
+	ignore_comments(infileStream, s);
+
 	// create matrix
 	pixelMatrix matrix;
 	matrix.resize(x_size);
@@ -103,6 +109,19 @@ pixelMatrix read_pixel_matrix(std::string infileName) {
 	// close filestream and return matrix
 	infileStream.close();
 	return matrix;
+}
+
+// helper function to print pixel matrix
+void print_pixel_matrix(pixelMatrix &pixel_matrix) {
+	int x_size = pixel_matrix.size();
+	int y_size = pixel_matrix[0].size();
+	std::cout << std::endl;
+	for (int j = 0; j < y_size; ++j) {
+		for (int i = 0; i < x_size; ++i) {
+			std::cout << pixel_matrix[i][j] << " ";
+		}
+		std::cout << std::endl;
+	}
 }
 
 // calculate energy value corresponding to each pixel in matrix
@@ -218,6 +237,8 @@ void remove_vertical_seams(pixelMatrix &pixel_matrix, pixelMatrix &energy_matrix
 			// get next pixel to remove
 			x_remove = path_parents[x_remove][y_remove];
 			--y_remove;
+
+			// print_pixel_matrix(pixel_matrix);
 		}
 
 		pixel_matrix.pop_back();
@@ -287,16 +308,18 @@ void remove_horizontal_seams(pixelMatrix &pixel_matrix, pixelMatrix &energy_matr
 
 			// update energy matrix
 			energy_matrix[x_remove].erase(energy_matrix[x_remove].begin() + y_remove);
-			/*if (x_remove > 0) {
+			if (x_remove > 0) {
 				set_pixel_energy(energy_matrix, pixel_matrix, x_remove - 1, y_remove);
 			}
 			if (x_remove < x_size - 1) {
 				set_pixel_energy(energy_matrix, pixel_matrix, x_remove, y_remove);
-			}*/
+			}
 
 			// get next pixel to remove
 			y_remove = path_parents[x_remove][y_remove];
 			--x_remove;
+
+			// print_pixel_matrix(pixel_matrix);
 		}
 
 		--y_size;
@@ -315,6 +338,9 @@ void write_pixel_matrix(std::string outfileName, pixelMatrix &pixel_matrix) {
 	int x_size = pixel_matrix.size();
 	int y_size = pixel_matrix[0].size();
 	outfileStream << x_size << " " << y_size << '\n';
+
+	// write color count
+	outfileStream << 255 << '\n';
 
 	// write pixel values
 	for (int j = 0; j < y_size; ++j) {
