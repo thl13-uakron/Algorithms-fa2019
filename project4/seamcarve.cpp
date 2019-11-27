@@ -127,6 +127,21 @@ void print_pixel_matrix(pixelMatrix &pixel_matrix) {
 }
 
 // calculate energy value corresponding to each pixel in matrix
+void set_pixel_energy(pixelMatrix &energy_matrix, pixelMatrix &pixel_matrix, int i, int j) {
+	energy_matrix[i][j] = 0;
+	if (i > 0) {
+		energy_matrix[i][j] += abs(pixel_matrix[i][j] - pixel_matrix[i - 1][j]);
+	}
+	if (i < energy_matrix.size() - 1) {
+		energy_matrix[i][j] += abs(pixel_matrix[i][j] - pixel_matrix[i + 1][j]);
+	}
+	if (j > 0) {
+		energy_matrix[i][j] += abs(pixel_matrix[i][j] - pixel_matrix[i][j - 1]);
+	}
+	if (j < energy_matrix[i].size() - 1) {
+		energy_matrix[i][j] += abs(pixel_matrix[i][j] - pixel_matrix[i][j + 1]);
+	}
+}
 pixelMatrix get_energy_matrix(pixelMatrix &pixel_matrix) {
 	// create matrix
 	pixelMatrix energy_matrix;
@@ -140,7 +155,8 @@ pixelMatrix get_energy_matrix(pixelMatrix &pixel_matrix) {
 	for (int i = 0; i < x_size; ++i) {
 		energy_matrix[i].resize(y_size);
 		for (int j = 0; j < y_size; ++j) {
-			energy_matrix[i][j] = 0;
+			set_pixel_energy(energy_matrix, pixel_matrix, i, j);
+			/*energy_matrix[i][j] = 0;
 			if (i > 0) {
 				energy_matrix[i][j] += abs(pixel_matrix[i][j] - pixel_matrix[i - 1][j]);
 			}
@@ -152,7 +168,7 @@ pixelMatrix get_energy_matrix(pixelMatrix &pixel_matrix) {
 			}
 			if (j < energy_matrix[i].size() - 1) {
 				energy_matrix[i][j] += abs(pixel_matrix[i][j] - pixel_matrix[i][j + 1]);
-			}
+			}*/
 		}
 	}
 
@@ -170,10 +186,10 @@ void remove_vertical_seams(pixelMatrix &pixel_matrix, int seams) {
 	pixelMatrix path_parents;
 
 	// create energy matrix
-	pixelMatrix energy_matrix;
+	pixelMatrix energy_matrix = get_energy_matrix(pixel_matrix);
 
 	for (int s = 0; s < seams; ++s) {
-		energy_matrix = get_energy_matrix(pixel_matrix);
+		// energy_matrix = get_energy_matrix(pixel_matrix);
 
 		path_energies.resize(x_size);
 		path_parents.resize(x_size);
@@ -221,11 +237,14 @@ void remove_vertical_seams(pixelMatrix &pixel_matrix, int seams) {
 		}
 
 		// trace and remove pixels in seam
+		std::vector<pixel_t> removed_pixels;
 		while (y_remove >= 0) {
 			// remove pixel
 			for (int i = x_remove; i < x_size - 1; ++i) {
 				pixel_matrix[i][y_remove] = pixel_matrix[i + 1][y_remove];
+				energy_matrix[i][y_remove] = energy_matrix[i + 1][y_remove];
 			}
+			removed_pixels.push_back(x_remove);
 
 			// get next pixel to remove
 			x_remove = path_parents[x_remove][y_remove];
@@ -237,6 +256,17 @@ void remove_vertical_seams(pixelMatrix &pixel_matrix, int seams) {
 		pixel_matrix.pop_back();
 		energy_matrix.pop_back();
 		--x_size;
+		
+		// update energy matrix
+		for (y_remove = 0; y_remove < y_size; ++y_remove) {
+			x_remove = removed_pixels[y_size - (1 + y_remove)];
+			if (x_remove > 0) {
+				set_pixel_energy(energy_matrix, pixel_matrix, x_remove - 1, y_remove);
+			}
+			if (x_remove < x_size - 1) {
+				set_pixel_energy(energy_matrix, pixel_matrix, x_remove, y_remove);
+			}
+		}
 	}
 }
 
@@ -250,10 +280,10 @@ void remove_horizontal_seams(pixelMatrix &pixel_matrix, int seams) {
 	pixelMatrix path_energies;
 	pixelMatrix path_parents;
 
-	pixelMatrix energy_matrix;
+	pixelMatrix energy_matrix = get_energy_matrix(pixel_matrix);
 
 	for (int s = 0; s < seams; ++s) {
-		energy_matrix = get_energy_matrix(pixel_matrix);
+		// energy_matrix = get_energy_matrix(pixel_matrix);
 
 		path_energies.resize(x_size);
 		path_parents.resize(x_size);
@@ -298,16 +328,30 @@ void remove_horizontal_seams(pixelMatrix &pixel_matrix, int seams) {
 		}
 
 		// trace and remove pixels in seam
+		std::vector<pixel_t> removed_pixels;
 		while (x_remove >= 0) {
 			// remove pixel
 			// std::cout << energy_matrix[x_remove][y_remove] << " " << path_energies[x_remove][y_remove] << std::endl;
 			pixel_matrix[x_remove].erase(pixel_matrix[x_remove].begin() + y_remove);
+			energy_matrix[x_remove].erase(energy_matrix[x_remove].begin() + y_remove);
+			removed_pixels.push_back(y_remove);
 
 			// get next pixel to remove
 			y_remove = path_parents[x_remove][y_remove];
 			--x_remove;
 
 			// print_pixel_matrix(pixel_matrix);
+		}
+		// update energy matrix
+		// energy_matrix = get_energy_matrix(pixel_matrix);
+		for (x_remove = 0; x_remove < x_size; ++x_remove) {
+			y_remove = removed_pixels[x_size - (1 + x_remove)];
+			if (y_remove > 0) {
+				set_pixel_energy(energy_matrix, pixel_matrix, x_remove, y_remove - 1);
+			}
+			if (y_remove < y_size - 1) {
+				set_pixel_energy(energy_matrix, pixel_matrix, x_remove, y_remove);
+			}
 		}
 
 		--y_size;
@@ -321,6 +365,8 @@ void write_pixel_matrix(std::string outfileName, pixelMatrix &pixel_matrix, int 
 
 	// write header line
 	outfileStream << "P2" << '\n';
+
+	outfileStream << "# Created by IrfanView" << '\n';
 
 	// write dimensions
 	int x_size = pixel_matrix.size();
@@ -337,8 +383,6 @@ void write_pixel_matrix(std::string outfileName, pixelMatrix &pixel_matrix, int 
 		}
 		outfileStream << '\n';
 	}
-
-	outfileStream << '\n';
 
 	// cloxe filestream
 	outfileStream.close();
